@@ -154,6 +154,7 @@ const matchingsData = [
 
 const matchingListWrapper = document.getElementById('matching-list-wrapper');
 const matchingCheckButton = document.getElementById('matching-check-button');
+const matchingShowAnswersButton = document.getElementById('matching-show-answers-button');
 const matchingFeedback = document.getElementById('matching-feedback');
 
 // Función para barajar un array
@@ -166,19 +167,27 @@ function shuffleArray(array) {
 }
 
 function renderMatchings() {
+    matchingListWrapper.innerHTML = '';
     matchingsData.forEach((matchingSet) => {
         const setDiv = document.createElement('div');
         setDiv.classList.add('matching-set');
         
-        // Título del pareo
         const title = document.createElement('h3');
         title.textContent = matchingSet.title;
         setDiv.appendChild(title);
 
+        if (matchingSet.imageUrl) {
+            const image = document.createElement('img');
+            image.src = matchingSet.imageUrl;
+            image.alt = matchingSet.title;
+            image.classList.add('matching-image');
+            setDiv.appendChild(image);
+        }
+
         const shuffledQuestions = shuffleArray([...matchingSet.pairs]);
         const shuffledAnswers = shuffleArray([...matchingSet.pairs]);
 
-        shuffledQuestions.forEach((pair, index) => {
+        shuffledQuestions.forEach((pair) => {
             const matchingItem = document.createElement('div');
             matchingItem.classList.add('matching-item');
             
@@ -188,7 +197,7 @@ function renderMatchings() {
 
             const selectList = document.createElement('select');
             selectList.classList.add('matching-dropdown');
-            selectList.setAttribute('data-question', pair.question);
+            selectList.setAttribute('data-question-text', pair.question);
 
             const defaultOption = document.createElement('option');
             defaultOption.textContent = "Selecciona una opción";
@@ -210,8 +219,6 @@ function renderMatchings() {
 
         matchingListWrapper.appendChild(setDiv);
     });
-
-    matchingCheckButton.addEventListener('click', checkMatchings);
 }
 
 function checkMatchings() {
@@ -221,15 +228,20 @@ function checkMatchings() {
 
     allDropdowns.forEach(dropdown => {
         const selectedAnswer = dropdown.value;
-        const question = dropdown.getAttribute('data-question');
+        const questionText = dropdown.getAttribute('data-question-text');
         
-        // Limpiar estilos previos
         dropdown.classList.remove('correct', 'incorrect');
 
         if (selectedAnswer) {
             answeredCount++;
-            // Encontrar la respuesta correcta en los datos
-            const correctPair = matchingsData.flatMap(set => set.pairs).find(p => p.question === question);
+
+            // Encuentra el conjunto de pareos al que pertenece este dropdown
+            const parentSet = dropdown.closest('.matching-set');
+            const setIndex = Array.from(matchingListWrapper.children).indexOf(parentSet);
+            const currentMatchingSet = matchingsData[setIndex];
+
+            // Busca la respuesta correcta dentro de ese conjunto específico
+            const correctPair = currentMatchingSet.pairs.find(p => p.question === questionText);
             
             if (correctPair && correctPair.answer === selectedAnswer) {
                 dropdown.classList.add('correct');
@@ -253,6 +265,36 @@ function checkMatchings() {
         matchingFeedback.style.color = "orange";
     }
 }
+
+function showCorrectAnswers() {
+    const allDropdowns = document.querySelectorAll('.matching-dropdown');
+    allDropdowns.forEach(dropdown => {
+        const questionText = dropdown.getAttribute('data-question-text');
+
+        // Encuentra el conjunto de pareos al que pertenece este dropdown
+        const parentSet = dropdown.closest('.matching-set');
+        const setIndex = Array.from(matchingListWrapper.children).indexOf(parentSet);
+        const currentMatchingSet = matchingsData[setIndex];
+
+        // Busca la respuesta correcta dentro de ese conjunto específico
+        const correctPair = currentMatchingSet.pairs.find(p => p.question === questionText);
+
+        if (correctPair) {
+            dropdown.value = correctPair.answer;
+            dropdown.classList.add('correct');
+        }
+        dropdown.disabled = true; // Deshabilita los dropdowns después de mostrar las respuestas
+    });
+    // Deshabilita los botones para evitar re-intentos en el estado de "mostrar respuestas"
+    matchingCheckButton.disabled = true;
+    matchingShowAnswersButton.disabled = true;
+    matchingFeedback.textContent = "Respuestas correctas mostradas.";
+    matchingFeedback.style.color = "green";
+}
+
+// Event Listeners
+matchingCheckButton.addEventListener('click', checkMatchings);
+matchingShowAnswersButton.addEventListener('click', showCorrectAnswers);
 
 // Llama a la función al cargar la página
 window.addEventListener('load', renderMatchings);
@@ -1062,3 +1104,4 @@ submitButton.addEventListener('click', () => {
 
     scoreElement.textContent = `Tu puntaje es: ${score} de ${questions.length}`;
 });
+
